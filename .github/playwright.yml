@@ -1,15 +1,17 @@
+
 name: Playwright Tests
 
 on:
-  
-   push:
-   branches: [main]
-   pull_request:
-   branches: [main]
-   workflow_dispatch: #manual trigger button in GitHub UI
-  
-   jobs:
-   test:
+  push:
+    branches: [main]
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+jobs:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ github.event.inputs.environment || 'QA' }}
@@ -29,7 +31,7 @@ on:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         run: npm ci
@@ -38,20 +40,19 @@ on:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Install Playwright OS deps only (if cached)
+      - name: Install Playwright OS dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      # reportingLabs run history: powers the Trend chart, new vs known
-      # failures, flaky dots and "got slower". One history per environment.
       - name: Restore reportingLabs history
         uses: actions/cache@v4
         with:
           path: reporting-labs.history.json
           key: reporting-labs-history-${{ github.event.inputs.environment || 'QA' }}-${{ github.run_id }}
-          restore-keys: reporting-labs-history-${{ github.event.inputs.environment || 'QA' }}-
+          restore-keys: |
+            reporting-labs-history-${{ github.event.inputs.environment || 'QA' }}-
 
-      - name: Run tests
+      - name: Run Playwright tests
         run: npx playwright test --project=chromium
         env:
           ENV: ${{ github.event.inputs.environment || 'QA' }}
